@@ -1,11 +1,12 @@
 package screen
 
 import (
-	"strings"
-
+	"github.com/Hilst/tuirest/suggestions"
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
+
+const INVALID_INPUT = `\033[7;31""mInvalid Input\033[0m`
 
 type IScreen interface {
 	Run() error
@@ -48,30 +49,18 @@ func (s *screen) makeOutput() *screen {
 	return s
 }
 
-var commands = []string{"help", "exit", "list", "clear", "show", "delete", "add", "update"}
-
 func (s *screen) makeInput() *screen {
 	s.input = tview.NewInputField().
 		SetLabel("> ").
-		SetAutocompleteFunc(func(currentText string) (entries []string) {
-			if currentText == "" {
-				entries = append(entries, commands...)
-				return
-			}
-			for _, cmd := range commands {
-				if strings.HasPrefix(cmd, currentText) {
-					entries = append(entries, cmd)
-				}
-			}
-			return
-		}).
+		SetAutocompleteFunc(suggestions.Matches).
 		Autocomplete().
 		SetDoneFunc(func(key tcell.Key) {
-			command := s.input.GetText()
-			if command != "" {
-				s.output.Write([]byte(command + "\n"))
-				s.input.SetText("")
+			resultText := s.input.GetText()
+			if !suggestions.Valid(resultText) {
+				resultText = INVALID_INPUT
 			}
+			s.output.Write([]byte(resultText + "\n"))
+			s.input.SetText("")
 		})
 	return s
 }
